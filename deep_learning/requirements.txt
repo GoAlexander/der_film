@@ -1,6 +1,4 @@
 keras==2.0.8
-#keras
 numpy
 pandas
 tensorflow
-#cf-python

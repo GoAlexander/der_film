@@ -1,12 +1,13 @@
 import argparse
 import math
+import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
+
 from CFModel import CFModel
 
 
@@ -15,6 +16,14 @@ K_FACTORS = 100 # The number of dimensional embeddings for movies and users
 # Function to predict the ratings given User ID and Movie ID
 def predict_rating(user_id, movie_id):
     return trained_model.rate(user_id - 1, movie_id - 1)
+
+def give_results(recommended, json_path):
+    prepared_json = recommended.to_json(orient='records')
+
+    if json_path:
+        with open(json_path, 'w') as outfile:
+            json.dump(prepared_json, outfile)
+    return prepared_json
 
 
 if __name__ == '__main__':
@@ -29,12 +38,14 @@ if __name__ == '__main__':
                    help='Predict films for user',
                    required=True)
     argparser.add_argument('--cache-path',
-                   help='Path to the weights.h file (default: {})'.format('./weights.h5'),
-                   default='weights.h5',
+                   help='Path to the weights.h file (default: {})'.format('./data/weights.h5'),
+                   default='./data/weights.h5',
+                   required=False)
+    argparser.add_argument('--json-path',
+                   help='Path to json with recommended movies',
                    required=False)
 
     argparser.parse_args()
-
     ratings_path = Path(argparser.parse_args().data_path) / "ratings.csv"
     users_path = Path(argparser.parse_args().data_path) / "users.csv"
     movies_path = Path(argparser.parse_args().data_path) / "movies.csv"
@@ -42,11 +53,8 @@ if __name__ == '__main__':
     cache_path = argparser.parse_args().cache_path
     recommend = int(argparser.parse_args().recommend)
     interesting_user = int(argparser.parse_args().user_id)
+    json_path = argparser.parse_args().json_path
 
-
-    pd.set_option('display.max_rows', 500)
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.width', 1000)
 
     ###LOAD DATASETS
     # Reading ratings file
@@ -77,11 +85,14 @@ if __name__ == '__main__':
     #print ('Ratings:', Ratings, ', shape =', Ratings.shape)
 
     ###PREDICT THE RATING
-    #The next step is to actually predict the ratings a random user will give to a random movie. Below I apply the freshly trained deep learning model for all the users and all the movies, using 100 dimensional embeddings for each of them. I also load pre-trained weights from weights.h5 for the model.
+    # The next step is to actually predict the ratings a random user will give to a random movie.
+    # Below I apply the freshly trained deep learning model for all the users and all the movies,
+    # using 100 dimensional embeddings for each of them.
+    # I also load pre-trained weights from weights.h5 for the model.
     # Use the pre-trained model
     trained_model = CFModel(max_userid, max_movieid, K_FACTORS)
     # Load weights
-    trained_model.load_weights('weights.h5')
+    trained_model.load_weights(cache_path)
     # Pick a random test user
     users[users['user_id'] == interesting_user]
 
@@ -89,7 +100,7 @@ if __name__ == '__main__':
     user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
 
     ###RECOMMEND MOVIES
-    #List of unrated 20 movies sorted by prediction value for our test user.
+    #List of unrated n movies sorted by prediction value for our test user.
     recommendations = ratings[ratings['movie_id'].isin(user_ratings['movie_id']) == False][['movie_id']].drop_duplicates()
     recommendations['prediction'] = recommendations.apply(lambda x: predict_rating(interesting_user, x['movie_id']), axis=1)
     recommended = recommendations.sort_values(by='prediction',
@@ -98,3 +109,5 @@ if __name__ == '__main__':
                                                                      how='inner',
                                                                      suffixes=['_u', '_m']).head(recommend)
     print(recommended.to_string(header=False))
+
+    print(give_results(recommended, json_path))
