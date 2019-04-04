@@ -94,10 +94,13 @@ if __name__ == '__main__':
     # Load weights
     trained_model.load_weights(cache_path)
     # Pick a random test user
-    users[users['user_id'] == interesting_user]
+    print("Choosed user: ")
+    print(users[users['user_id'] == interesting_user])
 
-    #Show the top n movies that user 2000 has already rated, including the predictions column showing the values that used 2000 would have rated based on the defined predict_rating function.
-    user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
+    #Show the top n movies that user has already rated, including the predictions column showing the values that used 2000 would have rated based on the defined predict_rating function.
+    #user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
+    #print("Choosed user rated: ")
+    #print(user_ratings)
 
     ###RECOMMEND MOVIES
     #List of unrated n movies sorted by prediction value for our test user.
