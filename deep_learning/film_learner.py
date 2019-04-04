@@ -1,5 +1,6 @@
 import argparse
 import math
+import json
 
 import numpy as np
 import pandas as pd
@@ -11,12 +12,25 @@ from CFModel import CFModel
 
 # Define constants
 K_FACTORS = 100 # The number of dimensional embeddings for movies and users
+LOSS_FACTOR = 'mse'
+OPTIMIZER = 'adamax'
+NUMBER_EPOCH = 10
 
 
 # Function to predict the ratings given User ID and Movie ID
 def predict_rating(user_id, movie_id):
     #return trained_model.rate(user_id - 1, movie_id - 1)
     return model.rate(user_id - 1, movie_id - 1)
+
+def dump_usage_statistics(input, rmse):
+    new_data = {rmse: input_vars}
+
+    with open('film_learner_dump.json') as f:
+        data = json.load(f)
+    data.update(new_data)
+    with open('film_learner_dump.json', 'w') as f:
+        json.dump(data, f)
+
 
 
 if __name__ == '__main__':
@@ -73,22 +87,27 @@ if __name__ == '__main__':
     #Compile the model using Mean Squared Error (MSE) as the loss function and the AdaMax learning algorithm.
     # Define model
     model = CFModel(max_userid, max_movieid, K_FACTORS)
+
     # Compile the model using MSE as the loss function and the AdaMax learning algorithm
-    model.compile(loss='mse', optimizer='adamax')
+    model.compile(loss=LOSS_FACTOR, optimizer=OPTIMIZER)
 
 
     ###TRAIN the MODEL
     # Callbacks monitor the validation loss
     # Save the model weights each time the validation loss has improved
-    callbacks = [EarlyStopping('val_loss', patience=2), 
+    callbacks = [EarlyStopping('val_loss', patience=2), # TODO: patience?
                  ModelCheckpoint('weights.h5', save_best_only=True)]
 
     # Use 30 epochs, 90% training data, 10% validation data 
-    history = model.fit([Users, Movies], Ratings, nb_epoch=10, validation_split=.1, verbose=2, callbacks=callbacks)
+    history = model.fit([Users, Movies], Ratings, nb_epoch=NUMBER_EPOCH, validation_split=.1, verbose=2, callbacks=callbacks)
 
 
     ###ROOT MEAN SQUARE  ERROR
     #During the training process above, I saved the model weights each time the validation loss has improved. Thus, I can use that value to calculate the best validation Root Mean Square Error.
     # Show the best validation RMSE
     min_val_loss, idx = min((val, idx) for (idx, val) in enumerate(history.history['val_loss']))
-    print('Minimum RMSE at epoch', '{:d}'.format(idx+1), '=', '{:.4f}'.format(math.sqrt(min_val_loss)))
+    min_rmse = '{:.4f}'.format(math.sqrt(min_val_loss))
+    print('Minimum RMSE at epoch', '{:d}'.format(idx+1), '=', min_rmse)
+
+    input_vars = [LOSS_FACTOR, OPTIMIZER, K_FACTORS, NUMBER_EPOCH]
+    dump_usage_statistics(input_vars, min_rmse)
