@@ -1,10 +1,12 @@
 import argparse
 import math
 import json
+import time
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 from keras.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from CFModel import CFModel
@@ -14,22 +16,26 @@ from CFModel import CFModel
 K_FACTORS = 100 # The number of dimensional embeddings for movies and users
 LOSS_FACTOR = 'mse'
 OPTIMIZER = 'adamax'
-NUMBER_EPOCH = 10
+NUMBER_EPOCH = 5 #50
 
 
 # Function to predict the ratings given User ID and Movie ID
 def predict_rating(user_id, movie_id):
-    #return trained_model.rate(user_id - 1, movie_id - 1)
     return model.rate(user_id - 1, movie_id - 1)
 
 def dump_usage_statistics(input, rmse):
+    dump_file_path = Path('film_learner_dump.json')
     new_data = {rmse: input_vars}
 
-    with open('film_learner_dump.json') as f:
-        data = json.load(f)
-    data.update(new_data)
-    with open('film_learner_dump.json', 'w') as f:
-        json.dump(data, f)
+    if not dump_file_path.exists():
+        with open(dump_file_path, 'w') as f:
+            json.dump(new_data, f)
+    else:
+        with open(dump_file_path) as f:
+            data = json.load(f)
+        data.update(new_data)
+        with open(dump_file_path, 'w') as f:
+            json.dump(data, f)
 
 
 
@@ -38,17 +44,13 @@ if __name__ == '__main__':
     argparser.add_argument('--data-path',
                            help='Path to folder where stored files: movies.csv, ratings.csv, users.csv',
                            required=True)
-    argparser.add_argument('--recommend',
-                   help='How many movies to recommend (number)',
-                   required=True)
-
     argparser.parse_args()
 
     ratings_path = Path(argparser.parse_args().data_path) / "ratings.csv"
     users_path = Path(argparser.parse_args().data_path) / "users.csv"
     movies_path = Path(argparser.parse_args().data_path) / "movies.csv"
-    recommend = argparser.parse_args().recommend
 
+    start_time = time.time()
 
     ###LOAD DATASETS
     # Reading ratings file
@@ -109,5 +111,7 @@ if __name__ == '__main__':
     min_rmse = '{:.4f}'.format(math.sqrt(min_val_loss))
     print('Minimum RMSE at epoch', '{:d}'.format(idx+1), '=', min_rmse)
 
-    input_vars = [LOSS_FACTOR, OPTIMIZER, K_FACTORS, NUMBER_EPOCH]
+    end_time = time.time()
+
+    input_vars = [LOSS_FACTOR, OPTIMIZER, K_FACTORS, NUMBER_EPOCH, (end_time-start_time)]
     dump_usage_statistics(input_vars, min_rmse)
