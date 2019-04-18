@@ -94,11 +94,11 @@ if __name__ == '__main__':
     # Load weights
     trained_model.load_weights(cache_path)
     # Pick a random test user
-    print("Choosed user: ")
-    print(users[users['user_id'] == interesting_user])
+    #print("Chosen user: ")
+    #print(users[users['user_id'] == interesting_user])
 
     #Show the top n movies that user has already rated, including the predictions column showing the values that used 2000 would have rated based on the defined predict_rating function.
-    #user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
+    user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
     #print("Choosed user rated: ")
     #print(user_ratings)
 
@@ -111,6 +111,8 @@ if __name__ == '__main__':
                                                                      on='movie_id',
                                                                      how='inner',
                                                                      suffixes=['_u', '_m']).head(recommend)
-    print(recommended.to_string(header=False))
+    #print as plain text
+    #print(recommended.to_string(header=False))
 
+    #print as json
     print(give_results(recommended, json_path))
