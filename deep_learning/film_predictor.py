@@ -98,7 +98,7 @@ if __name__ == '__main__':
     print(users[users['user_id'] == interesting_user])
 
     #Show the top n movies that user has already rated, including the predictions column showing the values that used 2000 would have rated based on the defined predict_rating function.
-    #user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
+    user_ratings = ratings[ratings['user_id'] == interesting_user][['user_id', 'movie_id', 'rating']]
     #print("Choosed user rated: ")
     #print(user_ratings)
 
