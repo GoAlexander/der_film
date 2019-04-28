@@ -1,0 +1,4 @@
+eventlet
+mglearn
+bs4
+imdbapi
