@@ -1,6 +1,6 @@
 # Scripts for movie analysis
 ## Scripts usage:
-1) film_clust_lda_prod.py
+*1) film_clust_lda_prod.py*
 ```
 python film_clust_lda_prod.py -view true -mgn 83 -cluster 1
 ```
