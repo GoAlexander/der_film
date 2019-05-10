@@ -158,29 +158,10 @@ def createParser ():
     parser.add_argument ('-wn', '--words_number', type=words_cluster_type, help="Words number taken for prediction of the rest line (<=4)", required=True)
     return parser
 	
-################ <IMDB films extractor> #################
-URL = "http://www.imdb.com/chart/top"
-r = requests.get(URL)
-soup = BeautifulSoup(r.content, 'html.parser')
-entries=soup.findAll('div', class_="wlb_ribbon")
-# getting top movies ids from imdb
-movie_ids = []
-for a in entries:
-    movie_ids.append(a['data-tconst'])
-#print("========= movie_ids:", movie_ids) 
-         
-header = 'http://www.omdbapi.com/?apikey=6be019fc&tomatoes=true&i='
-movie_info = []
-for i in movie_ids:
-    url = header + i
-#print("========= url:", url) 
-    r = requests.get(url).json()
-    movie = []
-    for a in r.keys():
-        movie.append(r[a])
-    movie_info.append(movie)
-columns = r.keys()
-df = pd.DataFrame(movie_info, columns = columns)
+################ <IMDB Json data processing> #################
+#url = "https://github.com/GoAlexander/der_film/blob/master/analyse_engine/data/Movie_imdb_26539.json"
+#[26540 rows x 15 columns]
+df = pd.read_json('data/Movie_imdb_26539.json', orient='columns', encoding='utf8')
 
 ################ <Extrating from films plot the most valuable words> #################
 parser = createParser()
@@ -188,7 +169,7 @@ parserArgs = parser.parse_args()
 #print('=== mgn = ', parserArgs.max_group_number)
 #print('=== parserArgs cl = ', parserArgs.cluster)
 
-plots = list(df['Plot'])
+plots = list(df['keywords'].apply(', '.join))
 temp = ""
 for p in plots:
         temp = temp + p
