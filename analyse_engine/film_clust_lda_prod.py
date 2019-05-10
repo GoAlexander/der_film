@@ -9,6 +9,7 @@ import operator
 import mglearn
 import numpy as np
 import argparse
+import json
 
 from bs4 import BeautifulSoup
 from sklearn.decomposition import PCA
@@ -79,30 +80,10 @@ def createParser ():
     parser.add_argument ('-cluster', type=cluster_type, help="Max cluster id num to test (< 5)", required=True)
     return parser
 
-################ <IMDB films extractor> #################
-URL = "http://www.imdb.com/chart/top"
-r = requests.get(URL)
-soup = BeautifulSoup(r.content, 'html.parser')
-entries=soup.findAll('div', class_="wlb_ribbon")
-# getting top movies ids from imdb
-movie_ids = []
-for a in entries:
-    movie_ids.append(a['data-tconst'])
-#print("========= movie_ids:", movie_ids) 
-         
-header = 'http://www.omdbapi.com/?apikey=6be019fc&tomatoes=true&i='
-movie_info = []
-for i in movie_ids:
-    url = header + i
-#print("========= url:", url) 
-    r = requests.get(url).json()
-    movie = []
-    for a in r.keys():
-        movie.append(r[a])
-    movie_info.append(movie)
-columns = r.keys()
-df = pd.DataFrame(movie_info, columns = columns)
-#print("========= df:", df)
+################ <IMDB Json data processing> #################
+#url = "https://github.com/GoAlexander/der_film/blob/master/analyse_engine/data/Movie_imdb_26539.json"
+#[26540 rows x 15 columns]
+df = pd.read_json('data/Movie_imdb_26539.json', orient='columns', encoding='utf8')
 
 ################ <Extrating from films plot the most valuable words> #################
 parser = createParser()
@@ -110,10 +91,10 @@ parserArgs = parser.parse_args()
 #print('=== mgn = ', parserArgs.max_group_number)
 #print('=== parserArgs cl = ', parserArgs.cluster)
 
-plots = list(df['Plot'])
+plots = list(df['keywords'].apply(', '.join))
 temp = ""
 for p in plots:
-        temp = temp + p
+	temp = temp + p
 temp.replace(".", " ").replace(",", "")
 temp = temp.split(" ")
 temp = list(map(lambda x:x.lower(),temp))
@@ -126,7 +107,7 @@ X = vect.transform(temp)
 # test result
 feature_names = vect.get_feature_names()
 # print("=== Number of features: {}".format(len(feature_names)))
-# print("=== The first 20 features:\n{}".format(feature_names[:20]))
+print("=== The first 20 features:\n{}".format(feature_names[:20]))
 # print("=== Each 2000 feature:\n{}".format(feature_names[::2000]))
 
 # Max and min groups number (if number is greater than MAX_GROUPS_NUMBER - groups won`t be dense, info become useless)
