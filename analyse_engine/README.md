@@ -10,4 +10,4 @@ Options description:
     '-mgn', '--max_group_number', type=group_type, help="Display max number of cluster groups (< 84)", required=True
     '-cluster', type=cluster_type, help="Max cluster id num to test (< 5)", required=True
 ```
-2) forecasting_words_prod.py
+**2) forecasting_words_prod.py**
