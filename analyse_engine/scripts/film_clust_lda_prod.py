@@ -1,5 +1,4 @@
 import pylab
-#%pylab inline
 
 import requests
 import eventlet
@@ -12,6 +11,10 @@ import argparse
 import json
 import os
 import pickle
+import nltk
+
+#nltk.download('sentiwordnet')
+#from nltk.corpus import sentiwordnet as swn 
 
 from bs4 import BeautifulSoup
 from sklearn.decomposition import PCA
@@ -68,7 +71,7 @@ def cluster_type(x):
         raise argparse.ArgumentTypeError("Max cluster id num to test is 5")
     return x
 
-def strBool(v):
+def str_bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0'):
@@ -76,9 +79,9 @@ def strBool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')	
 	
-def createParser ():
+def create_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument ('-view', '--view_cluster', type=strBool, help="Display chosen cluster", required=True)	
+    parser.add_argument ('-view', '--view_cluster', type=str_bool, help="Display chosen cluster", required=True)	
     parser.add_argument ('-mgn', '--max_group_number', type=group_type, help="Display max number of cluster groups (< 84)", required=True)
     parser.add_argument ('-cluster', type=cluster_type, help="Max cluster id num to test (< 5)", required=True)
     return parser
@@ -92,9 +95,7 @@ def cached(cachefile):
                         print("using cached result from '%s'" % cachefile)
                         return pickle.load(cachehandle)
 
-            # execute the function with all arguments passed
-            print("=== 2.5")
-            print("===cachefile = ", cachefile)			
+            # execute the function with all arguments passed		
             res = fn(*args, **kwargs)
             # write to cache file
             with open(cachefile, 'wb') as cachehandle:
@@ -102,64 +103,68 @@ def cached(cachefile):
                 pickle.dump(res, cachehandle)
             return res
         return wrapped
-    return decorator	
-	
-@cached('lda_transform_cache.res')
+    return decorator
 
-def get_transformed_data(lda, X):
-    print("=== 2.6")
+@cached('film_dataframe_cache.res')	
+def get_film_dataframe():	
+	df = pd.read_csv('../data/movie_metadata.csv')
+	df = df.dropna(subset=['plot_keywords'])
+	df['plot_keywords'] = df['plot_keywords'].str.replace('|', ' ')
+	return df
+	
+@cached('preprocessed_data_cache.res')
+def data_preprocessing(df):
+	plots = list(df['plot_keywords'])
+	temp = ""
+	for p in plots:
+		temp = temp + p + " "
+	temp.replace(",", "")
+	temp = temp.split(" ")
+	return list(map(lambda x:x.lower(),temp))
+	
+def get_lda(MAX_GROUPS_NUMBER, temp):
+	vect = CountVectorizer(max_df=.15, stop_words="english").fit(temp)
+	feature_names = vect.get_feature_names()
+	print("=== Number of features: {}".format(len(feature_names)))
+	print("=== The first 20 features:\n{}".format(feature_names[:20]))
+	X = vect.transform(temp)
+	return LatentDirichletAllocation(n_components=MAX_GROUPS_NUMBER, learning_method="batch", max_iter=50, random_state=0)
+
+@cached('lda_transform_cache.res')
+def get_transformed_data(MAX_GROUPS_NUMBER, df):
+    lda = get_lda(MAX_GROUPS_NUMBER, df)
     return lda.fit_transform(X)
 	
 ################ <IMDB data processing> #################
-df = pd.read_csv('../data/movie_metadata.csv')
+#df = pd.read_csv('../data/movie_metadata.csv')
 
 ################ <Extrating from films plot the most valuable words> #################
-parser = createParser()
+parser = create_parser()
 parserArgs = parser.parse_args()
 #print('=== mgn = ', parserArgs.max_group_number)
 #print('=== parserArgs cl = ', parserArgs.cluster)
 
-df = df.dropna(subset=['plot_keywords'])
-df['plot_keywords'] = df['plot_keywords'].str.replace('|', ' ')
-
-plots = list(df['plot_keywords'])
-temp = ""
-for p in plots:
-    temp = temp + p + " "
-temp.replace(",", "")
-temp = temp.split(" ")
-temp = list(map(lambda x:x.lower(),temp))
-
-# collect valuable for further groups generatig words
-vect = CountVectorizer(max_df=.15, stop_words="english").fit(temp)
-X = vect.transform(temp)
-
-# test result
-feature_names = vect.get_feature_names()
-print("=== Number of features: {}".format(len(feature_names)))
-print("=== The first 20 features:\n{}".format(feature_names[:20]))
-# print("=== Each 2000 feature:\n{}".format(feature_names[::2000]))
+df = get_film_dataframe()
+temp = data_preprocessing(df)
 
 # Max and min groups number (if number is greater than MAX_GROUPS_NUMBER - groups won`t be dense, info become useless)
 # Here is LDA (Latent Dirichlet allocation - Латентное размещение Дирихле) is used for clustering (building topic model)
 MAX_GROUPS_NUMBER = parserArgs.max_group_number
 #MIN_GROUPS_NUMBER = 10
-#lda = LatentDirichletAllocation(n_components=MAX_GROUPS_NUMBER, learning_method="batch", max_iter=50, random_state=0)
-lda = LatentDirichletAllocation(n_components=MAX_GROUPS_NUMBER, learning_method="batch", max_iter=50, random_state=0)
 
-print("=== 2")
-document_topics = get_transformed_data(lda, X)
-print("=== 3")
+document_topics = get_transformed_data(MAX_GROUPS_NUMBER, df)
+
 # Sorting of features acsending order 
 #sorting = np.argsort(lda.components_, axis=1)[:, ::-1]
+
 # Getting of features names
-feature_names = np.array(vect.get_feature_names())
-print("========= feature_names \n", feature_names)
+#feature_names = np.array(vect.get_feature_names())
+#print("========= feature_names \n", feature_names)
 
 # Take some number of topics to view results
 #if parserArgs.view_cluster:
 #	mglearn.tools.print_topics(topics=range(20), feature_names=feature_names,
-#	 sorting=sorting, topics_per_chunk=5, n_words=10)
+#	sorting=sorting, topics_per_chunk=5, n_words=10)
 
 ################ <Demo: taking films from first two groups> ################# 
 # (!!!) Take into account: films duplications were removed
@@ -167,13 +172,22 @@ print("========= feature_names \n", feature_names)
 group = np.argsort(document_topics[:, parserArgs.cluster])[::-1]
 films = []
 
+data = {}
+
 for i in group[:10]:
+    print("====== i = ", i)
     films.append(df[df['plot_keywords'].str.contains(temp[i])].movie_title.unique())
 
 print("========= %d cluster\n" % parserArgs.cluster)
 for i in set(map(tuple, films)):
-    print(''.join(list(i)))
-       
+	data['film_name'] = list(i)
+	print('\n'.join(list(i)))
+
+#json_data = json.dumps(data)
+#print("===== json_data = ", json_data)
+
+with open('data.json', 'w') as outfile:
+	json.dump(data, outfile)	
 # sorting by weight document of the topic number 3
 # group3 = np.argsort(document_topics[:, 3])[::-1]
 # films_3 = []
