@@ -81,10 +81,12 @@ def str_bool(v):
 	
 def create_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument ('-view', '--view_cluster', type=str_bool, help="Display chosen cluster", required=True)	
-    parser.add_argument ('-mgn', '--max_group_number', type=group_type, help="Display max number of cluster groups (< 84)", required=True)
+    #parser.add_argument ('-view', '--view_cluster', type=strBool, help="Display chosen cluster", required=True)	
+    #parser.add_argument ('-mgn', '--max_group_number', type=group_type, help="Display max number of cluster groups (< 84)", required=True)
     parser.add_argument ('-cluster', type=cluster_type, help="Max cluster id num to test (< 5)", required=True)
+    parser.add_argument ('-words', help="Words for films search (<= 4)",  default=[], nargs=4, required=True)
     return parser
+
 
 def cached(cachefile):
     def decorator(fn):  # define a decorator for a function "fn"
@@ -134,6 +136,15 @@ def get_lda(MAX_GROUPS_NUMBER, temp):
 def get_transformed_data(MAX_GROUPS_NUMBER, df):
     lda = get_lda(MAX_GROUPS_NUMBER, df)
     return lda.fit_transform(X)
+
+@cached('dataframe_cache.res')
+def get_df_res(datasetArray):
+    for col in datasetArray:
+        for i, row_value in datasetArray[col].iteritems():
+            index = pd.to_numeric(datasetArray[col][i])
+            datasetArray.loc[col][i] = temp[pd.to_numeric(datasetArray[col][i])]
+    print("=*********** datasetArray = ", datasetArray)
+    return datasetArray
 	
 ################ <IMDB data processing> #################
 #df = pd.read_csv('../data/movie_metadata.csv')
@@ -143,15 +154,17 @@ parser = create_parser()
 parserArgs = parser.parse_args()
 #print('=== mgn = ', parserArgs.max_group_number)
 #print('=== parserArgs cl = ', parserArgs.cluster)
+#print('=== words = ', parserArgs.words)
 
 df = get_film_dataframe()
 temp = data_preprocessing(df)
 
 # Max and min groups number (if number is greater than MAX_GROUPS_NUMBER - groups won`t be dense, info become useless)
 # Here is LDA (Latent Dirichlet allocation - Латентное размещение Дирихле) is used for clustering (building topic model)
-MAX_GROUPS_NUMBER = parserArgs.max_group_number
+MAX_GROUPS_NUMBER = 83 #parserArgs.max_group_number
 #MIN_GROUPS_NUMBER = 10
 
+#83 columns, 37226 rows
 document_topics = get_transformed_data(MAX_GROUPS_NUMBER, df)
 
 # Sorting of features acsending order 
@@ -169,13 +182,30 @@ document_topics = get_transformed_data(MAX_GROUPS_NUMBER, df)
 ################ <Demo: taking films from first two groups> ################# 
 # (!!!) Take into account: films duplications were removed
 # sorting by weight document of the topic number 1
-group = np.argsort(document_topics[:, parserArgs.cluster])[::-1]
-films = []
 
+# 37226 len of group
+#for i in MAX_GROUPS_NUMBER:
+# document_topics[:, parserArgs.cluster] contains weight of words
+print("====== document_topics[:, parserArgs.cluster] = ", document_topics[:, parserArgs.cluster])
+datasetArray = pd.DataFrame(np.argsort(document_topics, axis=0)[::-1])
+
+datasetArrayRes = get_df_res(datasetArray)
+print("====== datasetArrayRes", datasetArrayRes)
+
+#returns inverted array
+group = np.argsort(document_topics[:, parserArgs.cluster])[::-1]
+print("=====np.argsort(document_topics[:, parserArgs.cluster]) = ", np.argsort(document_topics[:, parserArgs.cluster]))
+# for all array!
+#print("===== np.argsort(document_topics)) = ", np.argsort(document_topics, axis=0))
+
+print("=====group = ", group)
+
+films = []
 data = {}
 
-for i in group[:10]:
-    print("====== i = ", i)
+for i in group[:len(group)]:
+    #print("====== i = ", i)
+    #print("====== temp[i] = ", temp[i])	
     films.append(df[df['plot_keywords'].str.contains(temp[i])].movie_title.unique())
 
 print("========= %d cluster\n" % parserArgs.cluster)
