@@ -214,4 +214,4 @@ for i in set(map(tuple, films)):
 #print("===== json_data = ", json_data)
 
 with open('data.json', 'w') as outfile:
-	json.dump(data, outfile)
+	json.dump(data, outfile, ensure_ascii=False)
