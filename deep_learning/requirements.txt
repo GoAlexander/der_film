@@ -1,4 +1,4 @@
-keras==2.0.8
+keras==2.13.1
 numpy
 pandas
 tensorflow
